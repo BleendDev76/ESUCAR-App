@@ -1,0 +1,48 @@
+# Firma y credenciales (nunca subir al repositorio)
+*.jks
+*.keystore
+CREDENCIALES.txt
+keystore.properties
+
+# Gradle y compilacion
+.gradle
+.gradle/
+/build
+build/
+*/build/
+.kotlin
+.kotlin/
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+
+# Entorno local
+local.properties
+/local.properties
+opencode.json
+.env
+
+# Android Studio / IntelliJ
+.idea/
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+*.iml
+/captures
+captures/
+.externalNativeBuild
+.externalNativeBuild/
+.cxx
+.cxx/
+/docs
+.vscode/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+

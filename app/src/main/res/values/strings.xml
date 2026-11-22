@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">ESUCAR</string>
+    <string name="notificaciones_canal_nombre">Avisos ESUCAR</string>
+    <string name="notificaciones_canal_descripcion">Consultas, respuestas y materiales nuevos</string>
+</resources>
