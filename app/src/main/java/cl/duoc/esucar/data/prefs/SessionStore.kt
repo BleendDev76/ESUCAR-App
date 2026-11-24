@@ -118,6 +118,20 @@ class SessionStore(private val context: Context) {
         }
     }
 
+    /** Tokens sin rol: permite autenticar la carga del perfil sin conceder acceso previo. */
+    suspend fun setSupabaseCredentials(accessToken: String, refreshToken: String, userId: String) {
+        cachedAccessToken = accessToken
+        cachedRefreshToken = refreshToken
+        cachedUserId = userId
+        context.sessionDataStore.edit { preferences ->
+            preferences[accessTokenKey] = accessToken
+            preferences[refreshTokenKey] = refreshToken
+            preferences[supabaseUserIdKey] = userId
+            preferences.remove(roleKey)
+            preferences.remove(userIdKey)
+        }
+    }
+
     suspend fun updateTokens(accessToken: String, refreshToken: String) {
         cachedAccessToken = accessToken
         cachedRefreshToken = refreshToken

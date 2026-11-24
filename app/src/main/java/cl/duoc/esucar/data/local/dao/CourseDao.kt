@@ -27,6 +27,10 @@ interface CourseDao {
     @Query("SELECT * FROM courses")
     suspend fun getAllCourses(): List<CourseEntity>
 
+    @Transaction
+    @Query("SELECT * FROM courses ORDER BY position ASC")
+    fun observeCoursesForChat(): Flow<List<CourseWithUnits>>
+
     /**
      * Usa `@Upsert` (INSERT ... ON CONFLICT DO UPDATE) en vez de
      * `OnConflictStrategy.REPLACE`: REPLACE borra y reinserta la fila, lo que
@@ -38,6 +42,15 @@ interface CourseDao {
     @Upsert
     suspend fun upsertUnits(units: List<UnitEntity>)
 
+    @Query("DELETE FROM units WHERE id NOT IN (:ids)")
+    suspend fun deleteUnitsNotIn(ids: List<String>)
+
+    @Query("DELETE FROM units")
+    suspend fun deleteAllUnits()
+
     @Query("DELETE FROM courses WHERE id NOT IN (:ids)")
     suspend fun deleteCoursesNotIn(ids: List<String>)
+
+    @Query("DELETE FROM courses")
+    suspend fun deleteAllCourses()
 }

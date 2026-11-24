@@ -50,7 +50,7 @@ class SupabaseAuthRepository(
                 )
             )
         )
-        persistSession(response, fallbackRol = RolUsuario.ESTUDIANTE, fallbackName = nombre.trim())
+        persistSession(response, fallbackName = nombre.trim())
     }
 
     suspend fun iniciarSesion(email: String, password: String): Result<SessionInfo> = capture {
@@ -60,7 +60,7 @@ class SupabaseAuthRepository(
                 password = password
             )
         )
-        persistSession(response, fallbackRol = RolUsuario.ESTUDIANTE, fallbackName = "")
+        persistSession(response, fallbackName = "")
     }
 
     /**
@@ -92,20 +92,21 @@ class SupabaseAuthRepository(
 
     suspend fun perfilActual(): Result<SessionInfo> = capture {
         val userId = sessionStore.cachedUserId
-            ?: return@capture SessionInfo("", "", "", RolUsuario.ESTUDIANTE)
+            ?: throw SupabaseException("No hay una sesión activa.")
         val profile = restApi.profile("eq.$userId").firstOrNull()
             ?: throw SupabaseException("No se encontró el perfil del usuario.")
+        val rol = RolUsuario.desde(profile.role)
+            ?: throw SupabaseException("El perfil tiene un rol no válido.")
         SessionInfo(
             userId = profile.id,
             email = "",
             name = profile.fullName,
-            rol = RolUsuario.desde(profile.role) ?: RolUsuario.ESTUDIANTE
+            rol = rol
         )
     }
 
     private suspend fun persistSession(
         response: AuthResponse,
-        fallbackRol: RolUsuario,
         fallbackName: String
     ): SessionInfo {
         val access = response.effectiveAccessToken
@@ -119,22 +120,27 @@ class SupabaseAuthRepository(
         }
 
         val email = user.email.orEmpty()
-        val metadataRol = RolUsuario.desde(user.userMetadata?.role) ?: fallbackRol
         val metadataName = user.userMetadata?.fullName?.takeIf { it.isNotBlank() } ?: fallbackName
 
-        // Guardamos primero para que la consulta del perfil viaje autenticada.
-        sessionStore.setSupabaseSession(
+        // Guardamos credenciales sin rol para autenticar la consulta, sin abrir una pestaña.
+        sessionStore.setSupabaseCredentials(
             accessToken = access,
             refreshToken = refresh,
-            userId = user.id,
-            email = email,
-            name = metadataName.ifBlank { "Usuario ESUCAR" },
-            rol = metadataRol
+            userId = user.id
         )
 
-        val profile = runCatching { restApi.profile("eq.${user.id}").firstOrNull() }.getOrNull()
-        val realRol = RolUsuario.desde(profile?.role) ?: metadataRol
-        val realName = profile?.fullName?.takeIf { it.isNotBlank() } ?: metadataName
+        val profile = try {
+            restApi.profile("eq.${user.id}").firstOrNull()
+                ?: throw SupabaseException("No se encontró el perfil del usuario.")
+        } catch (error: Exception) {
+            sessionStore.clear()
+            throw error
+        }
+        val realRol = RolUsuario.desde(profile.role) ?: run {
+            sessionStore.clear()
+            throw SupabaseException("El perfil tiene un rol no válido.")
+        }
+        val realName = profile.fullName.takeIf { it.isNotBlank() } ?: metadataName.ifBlank { fallbackName }
 
         sessionStore.setSupabaseSession(
             accessToken = access,

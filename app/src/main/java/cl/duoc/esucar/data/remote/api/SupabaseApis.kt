@@ -6,6 +6,8 @@ import cl.duoc.esucar.data.remote.dto.CourseDto
 import cl.duoc.esucar.data.remote.dto.CreateMaterialRequest
 import cl.duoc.esucar.data.remote.dto.CreateMessageRequest
 import cl.duoc.esucar.data.remote.dto.CreateReplyRequest
+import cl.duoc.esucar.data.remote.dto.CreateDirectMessageRequest
+import cl.duoc.esucar.data.remote.dto.DirectMessageDto
 import cl.duoc.esucar.data.remote.dto.LoginRequest
 import cl.duoc.esucar.data.remote.dto.MaterialDto
 import cl.duoc.esucar.data.remote.dto.MessageDto
@@ -52,11 +54,29 @@ interface SupabaseAuthApi {
 
 interface SupabaseRestApi {
 
+    @GET("rest/v1/direct_messages")
+    suspend fun directMessages(
+        @Query("select") select: String = "*",
+        @Query("order") order: String = "created_at.asc"
+    ): List<DirectMessageDto>
+
+    @POST("rest/v1/direct_messages")
+    suspend fun createDirectMessage(
+        @Body body: CreateDirectMessageRequest,
+        @Header("Prefer") prefer: String = "return=representation"
+    ): List<DirectMessageDto>
+
     /** Perfil real del usuario (el rol autoritativo vive en Postgres, no en el JWT). */
     @GET("rest/v1/profiles")
     suspend fun profile(
         @Query("id") idFilter: String,
         @Query("select") select: String = "id,full_name,role"
+    ): List<ProfileDto>
+
+    @GET("rest/v1/teacher_directory")
+    suspend fun teacherDirectory(
+        @Query("id") idFilter: String,
+        @Query("select") select: String = "id,full_name"
     ): List<ProfileDto>
 
     @GET("rest/v1/courses")

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ExitToApp
@@ -196,8 +197,9 @@ fun NotificationBell(unreadCount: Int, onClick: () -> Unit) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .offset(x = (-6).dp, y = 6.dp)
-                    .size(15.dp)
+                    .offset(x = (-1).dp, y = 1.dp)
+                    .heightIn(min = 20.dp)
+                    .widthIn(min = 20.dp)
                     .clip(CircleShape)
                     .background(Red500),
                 contentAlignment = Alignment.Center
@@ -205,8 +207,9 @@ fun NotificationBell(unreadCount: Int, onClick: () -> Unit) {
                 Text(
                     text = if (unreadCount > 9) "9+" else unreadCount.toString(),
                     color = Color.White,
-                    fontSize = 8.sp,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
                 )
             }
         }

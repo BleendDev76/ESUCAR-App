@@ -18,6 +18,8 @@ import cl.duoc.esucar.data.local.seed.SeedData
 import androidx.room.migration.Migration
 import cl.duoc.esucar.data.local.dao.UserDao
 import cl.duoc.esucar.data.local.entity.UserEntity
+import cl.duoc.esucar.data.local.dao.DirectMessageDao
+import cl.duoc.esucar.data.local.entity.DirectMessageEntity
 
 @Database(
     entities = [
@@ -26,9 +28,10 @@ import cl.duoc.esucar.data.local.entity.UserEntity
         MaterialEntity::class,
         MessageEntity::class,
         NotificationEntity::class,
-        UserEntity::class
+        UserEntity::class,
+        DirectMessageEntity::class
     ],
-    version = 3,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -42,6 +45,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun notificationDao(): NotificationDao
 
     abstract fun userDao(): UserDao
+
+    abstract fun directMessageDao(): DirectMessageDao
 
     companion object {
         private const val DATABASE_NAME = "esucar.db"
@@ -80,13 +85,37 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE materials ADD COLUMN pendingProgressUserId TEXT")
+            }
+        }
+
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE courses ADD COLUMN teacherId TEXT")
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS direct_messages (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        studentId TEXT NOT NULL,
+                        teacherId TEXT NOT NULL,
+                        senderId TEXT NOT NULL,
+                        studentName TEXT NOT NULL,
+                        content TEXT NOT NULL,
+                        timestamp TEXT NOT NULL
+                    )""".trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_direct_messages_studentId_teacherId_timestamp ON direct_messages(studentId, teacherId, timestamp)")
+            }
+        }
+
         fun create(context: Context): AppDatabase =
             Room.databaseBuilder(
                 context.applicationContext,
                 AppDatabase::class.java,
                 DATABASE_NAME
             )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .addCallback(object : Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {
                         super.onCreate(db)

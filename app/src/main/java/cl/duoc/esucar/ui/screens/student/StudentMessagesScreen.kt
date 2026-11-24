@@ -49,7 +49,8 @@ import cl.duoc.esucar.ui.theme.Slate500
 fun StudentMessagesScreen(
     viewModel: StudentViewModel,
     onNewQuery: () -> Unit,
-    onMessageClick: (mensajeId: String) -> Unit
+    onMessageClick: (mensajeId: String) -> Unit,
+    onDirectChat: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -88,6 +89,9 @@ fun StudentMessagesScreen(
                     text = "Nueva Consulta",
                     onClick = onNewQuery
                 )
+
+                Spacer(modifier = Modifier.height(10.dp))
+                PrimaryActionButton(text = "Chat directo con un docente", onClick = onDirectChat)
 
                 Spacer(modifier = Modifier.height(20.dp))
 

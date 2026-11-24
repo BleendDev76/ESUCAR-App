@@ -59,6 +59,7 @@ import cl.duoc.esucar.ui.theme.Slate600
 fun TeacherInboxScreen(
     viewModel: TeacherInboxViewModel,
     onMessageClick: (String) -> Unit,
+    onDirectChat: () -> Unit,
     onNotifications: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -91,6 +92,12 @@ fun TeacherInboxScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp)
             ) {
+                androidx.compose.material3.Button(
+                    onClick = onDirectChat,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Abrir chat directo") }
+
+                Spacer(modifier = Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     DropdownField(
                         label = "Curso",

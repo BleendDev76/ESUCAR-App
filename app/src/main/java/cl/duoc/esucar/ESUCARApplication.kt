@@ -40,6 +40,9 @@ class AppContainer(context: Context) {
 
     val userDao = database.userDao()
 
+    val courseDao = database.courseDao()
+    val directMessageDao = database.directMessageDao()
+
     val userRepository = UserRepository(userDao)
 
     val sessionStore = SessionStore(applicationContext)
@@ -78,7 +81,8 @@ class AppContainer(context: Context) {
                 courseDao = database.courseDao(),
                 materialDao = database.materialDao(),
                 messageDao = database.messageDao(),
-                notificationDao = database.notificationDao()
+                notificationDao = database.notificationDao(),
+                directMessageDao = database.directMessageDao()
             )
         } else {
             null

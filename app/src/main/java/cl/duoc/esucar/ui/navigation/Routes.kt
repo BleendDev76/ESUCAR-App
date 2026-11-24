@@ -12,6 +12,7 @@ object Routes {
     const val STUDENT_MATERIALS = "student/materiales/{asignaturaId}/{unidadId}"
     const val STUDENT_DETAIL = "student/detail/{asignaturaId}/{unidadId}/{materialId}"
     const val STUDENT_MESSAGES = "student/messages"
+    const val DIRECT_CHAT = "direct-chat"
     const val STUDENT_COMPOSE_BASE = "student/compose"
     const val STUDENT_COMPOSE =
         "$STUDENT_COMPOSE_BASE?asignaturaId={asignaturaId}&unidadId={unidadId}&materialId={materialId}&messageId={messageId}"

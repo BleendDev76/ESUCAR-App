@@ -31,6 +31,8 @@ internal class FakeCourseDao(private val cursos: List<CourseWithUnits>) : Course
 
     override fun observeCourses(): Flow<List<CourseWithUnits>> = flowOf(cursos)
 
+    override fun observeCoursesForChat(): Flow<List<CourseWithUnits>> = flowOf(cursos)
+
     override suspend fun getCourses(): List<CourseWithUnits> = cursos
 
     override suspend fun getCourse(courseId: String): CourseWithUnits? =
@@ -42,7 +44,13 @@ internal class FakeCourseDao(private val cursos: List<CourseWithUnits>) : Course
 
     override suspend fun upsertUnits(units: List<UnitEntity>) = Unit
 
+    override suspend fun deleteUnitsNotIn(ids: List<String>) = Unit
+
+    override suspend fun deleteAllUnits() = Unit
+
     override suspend fun deleteCoursesNotIn(ids: List<String>) = Unit
+
+    override suspend fun deleteAllCourses() = Unit
 }
 
 internal class FakeMaterialDao(
@@ -79,8 +87,29 @@ internal class FakeMaterialDao(
         materiales.removeAll { it.id !in ids }
     }
 
+    override suspend fun deleteAll() { materiales.clear() }
+
     override suspend fun resetStudied() {
         materiales.replaceAll { it.copy(studied = false) }
+    }
+
+    override suspend fun resetStudiedExceptPending(userId: String) {
+        materiales.replaceAll {
+            if (it.pendingProgressUserId == userId) it else it.copy(studied = false)
+        }
+    }
+
+    override suspend fun markStudiedPending(materialId: String, userId: String) {
+        actualizar(materialId) { it.copy(studied = true, pendingProgressUserId = userId) }
+    }
+
+    override suspend fun getPendingProgressIds(userId: String): List<String> =
+        materiales.filter { it.pendingProgressUserId == userId }.map { it.id }
+
+    override suspend fun clearPendingProgress(materialId: String, userId: String) {
+        actualizar(materialId) {
+            if (it.pendingProgressUserId == userId) it.copy(pendingProgressUserId = null) else it
+        }
     }
 
     override suspend fun setLocalFile(materialId: String, localPath: String?, downloaded: Boolean) {

@@ -12,7 +12,8 @@ data class CourseEntity(
     val name: String,
     val teacherName: String,
     val color: String,
-    val position: Int
+    val position: Int,
+    val teacherId: String? = null
 )
 
 @Entity(
@@ -63,7 +64,9 @@ data class MaterialEntity(
     val fileName: String? = null,
     val mimeType: String? = null,
     /** Ruta local del archivo ya descargado (modo sin conexión). */
-    val localPath: String? = null
+    val localPath: String? = null,
+    /** Usuario al que pertenece el progreso local todavía no confirmado por el servidor. */
+    val pendingProgressUserId: String? = null
 )
 
 @Entity(tableName = "messages")
@@ -83,6 +86,17 @@ data class MessageEntity(
     val timestamp: String,
     val reply: String?,
     val replyTimestamp: String?
+)
+
+@Entity(tableName = "direct_messages", indices = [Index("studentId", "teacherId", "timestamp")])
+data class DirectMessageEntity(
+    @PrimaryKey val id: String,
+    val studentId: String,
+    val teacherId: String,
+    val senderId: String,
+    val studentName: String,
+    val content: String,
+    val timestamp: String
 )
 
 @Entity(tableName = "notifications")

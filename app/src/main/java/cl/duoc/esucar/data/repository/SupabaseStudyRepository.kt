@@ -70,7 +70,6 @@ class SupabaseStudyRepository(
             return
         }
         // Se refleja de inmediato en la barra de progreso y luego se sincroniza.
-        local.marcarEstudiado(materialId)
         runCatching { sync.marcarEstudiado(materialId) }
     }
 

@@ -41,6 +41,8 @@ import cl.duoc.esucar.ui.screens.student.StudentMaterialsScreen
 import cl.duoc.esucar.ui.screens.student.StudentMessagesScreen
 import cl.duoc.esucar.ui.screens.student.StudentUnitsScreen
 import cl.duoc.esucar.ui.screens.student.StudentViewModel
+import cl.duoc.esucar.ui.screens.chat.DirectChatScreen
+import cl.duoc.esucar.ui.screens.chat.DirectChatViewModel
 import cl.duoc.esucar.ui.theme.AppBackground
 
 @Composable
@@ -277,7 +279,25 @@ fun StudentNavHost(
                                 navController.navigate(
                                     Routes.studentCompose(messageId = mensajeId)
                                 )
-                            }
+                            },
+                            onDirectChat = { navController.navigate(Routes.DIRECT_CHAT) }
+                        )
+                    }
+
+                    composable(Routes.DIRECT_CHAT) {
+                        val chatViewModel: DirectChatViewModel = viewModel(
+                            factory = DirectChatViewModel.fabrica(
+                                sync = container.syncRepository,
+                                messageDao = container.directMessageDao,
+                                courseDao = container.courseDao,
+                                sessionStore = container.sessionStore,
+                                role = RolUsuario.ESTUDIANTE
+                            )
+                        )
+                        DirectChatScreen(
+                            viewModel = chatViewModel,
+                            role = RolUsuario.ESTUDIANTE,
+                            onBack = { navController.popBackStack() }
                         )
                     }
 
@@ -407,5 +427,6 @@ private fun NavHostController.navigateToStudentTab(route: String) {
 private val STUDENT_SYNC_ROUTES = setOf(
     Routes.STUDENT_HOME,
     Routes.STUDENT_COURSES,
-    Routes.STUDENT_MESSAGES
+    Routes.STUDENT_MESSAGES,
+    Routes.DIRECT_CHAT
 )

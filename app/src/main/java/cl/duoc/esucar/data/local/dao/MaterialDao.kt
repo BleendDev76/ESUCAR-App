@@ -45,11 +45,26 @@ interface MaterialDao {
     @Query("DELETE FROM materials WHERE id NOT IN (:ids)")
     suspend fun deleteNotIn(ids: List<String>)
 
+    @Query("DELETE FROM materials")
+    suspend fun deleteAll()
+
     @Query("UPDATE materials SET studied = 1 WHERE id = :materialId AND studied = 0")
     suspend fun markStudied(materialId: String)
 
+    @Query("UPDATE materials SET studied = 1, pendingProgressUserId = :userId WHERE id = :materialId")
+    suspend fun markStudiedPending(materialId: String, userId: String)
+
+    @Query("SELECT id FROM materials WHERE pendingProgressUserId = :userId")
+    suspend fun getPendingProgressIds(userId: String): List<String>
+
+    @Query("UPDATE materials SET pendingProgressUserId = NULL WHERE id = :materialId AND pendingProgressUserId = :userId")
+    suspend fun clearPendingProgress(materialId: String, userId: String)
+
     @Query("UPDATE materials SET studied = 0")
     suspend fun resetStudied()
+
+    @Query("UPDATE materials SET studied = 0 WHERE pendingProgressUserId IS NULL OR pendingProgressUserId != :userId")
+    suspend fun resetStudiedExceptPending(userId: String)
 
     @Query("UPDATE materials SET downloaded = :downloaded WHERE id = :materialId")
     suspend fun setDownloaded(materialId: String, downloaded: Boolean)

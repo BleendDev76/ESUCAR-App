@@ -8,10 +8,12 @@ import android.util.Log
 import androidx.core.content.FileProvider
 import cl.duoc.esucar.core.time.nowTimestamp
 import cl.duoc.esucar.data.local.dao.CourseDao
+import cl.duoc.esucar.data.local.dao.DirectMessageDao
 import cl.duoc.esucar.data.local.dao.MaterialDao
 import cl.duoc.esucar.data.local.dao.MessageDao
 import cl.duoc.esucar.data.local.dao.NotificationDao
 import cl.duoc.esucar.data.local.entity.CourseEntity
+import cl.duoc.esucar.data.local.entity.DirectMessageEntity
 import cl.duoc.esucar.data.local.entity.MaterialEntity
 import cl.duoc.esucar.data.local.entity.MessageEntity
 import cl.duoc.esucar.data.local.entity.NotificationEntity
@@ -22,6 +24,7 @@ import cl.duoc.esucar.data.remote.api.SupabaseStorageApi
 import cl.duoc.esucar.data.remote.dto.CreateMaterialRequest
 import cl.duoc.esucar.data.remote.dto.CreateMessageRequest
 import cl.duoc.esucar.data.remote.dto.CreateReplyRequest
+import cl.duoc.esucar.data.remote.dto.CreateDirectMessageRequest
 import cl.duoc.esucar.data.remote.dto.UpdateMaterialRequest
 import cl.duoc.esucar.data.remote.dto.UpdateReadRequest
 import cl.duoc.esucar.data.remote.dto.UpsertDownloadRequest
@@ -86,7 +89,8 @@ class SupabaseSyncRepository(
     private val courseDao: CourseDao,
     private val materialDao: MaterialDao,
     private val messageDao: MessageDao,
-    private val notificationDao: NotificationDao
+    private val notificationDao: NotificationDao,
+    private val directMessageDao: DirectMessageDao
 ) {
 
     /** Descarga cursos, unidades, materiales, mensajes, progreso y notificaciones. */
@@ -95,6 +99,7 @@ class SupabaseSyncRepository(
         sincronizarMensajes()
         sincronizarProgreso()
         sincronizarNotificaciones()
+        sincronizarMensajesDirectos()
     }.onFailure { error ->
         // Sin este log, un fallo de sincronización queda invisible en la demo.
         Log.w("ESUCAR", "No se pudo sincronizar con Supabase: ${error.message}")
@@ -107,6 +112,11 @@ class SupabaseSyncRepository(
     suspend fun sincronizarCursos() {
         val remotos = rest.courses()
         val previos = materialDao.getAll().associateBy { it.id }
+        val nombresDocentes = remotos.mapNotNull { it.teacherId }.distinct().associateWith { teacherId ->
+            runCatching { rest.teacherDirectory("eq.$teacherId").firstOrNull()?.fullName }
+                .getOrNull()
+                .orEmpty()
+        }
 
         val cursos = mutableListOf<CourseEntity>()
         val unidades = mutableListOf<UnitEntity>()
@@ -117,9 +127,10 @@ class SupabaseSyncRepository(
                 id = curso.id,
                 code = curso.code,
                 name = curso.name,
-                teacherName = TEACHER_FALLBACK,
+                teacherName = nombresDocentes[curso.teacherId].orEmpty().ifBlank { TEACHER_FALLBACK },
                 color = curso.color,
-                position = curso.position
+                position = curso.position,
+                teacherId = curso.teacherId
             )
             curso.units.forEach { unidad ->
                 unidades += UnitEntity(
@@ -146,7 +157,8 @@ class SupabaseSyncRepository(
                         storagePath = material.storagePath,
                         fileName = material.fileName,
                         mimeType = material.mimeType,
-                        localPath = previo?.localPath
+                        localPath = previo?.localPath,
+                        pendingProgressUserId = previo?.pendingProgressUserId
                     )
                 }
             }
@@ -157,12 +169,13 @@ class SupabaseSyncRepository(
         courseDao.upsertUnits(unidades)
         materialDao.upsertAll(materiales)
 
-        if (materiales.isNotEmpty()) {
-            materialDao.deleteNotIn(materiales.map { it.id })
-        }
-        if (cursos.isNotEmpty()) {
-            courseDao.deleteCoursesNotIn(cursos.map { it.id })
-        }
+        if (unidades.isEmpty()) courseDao.deleteAllUnits()
+        else courseDao.deleteUnitsNotIn(unidades.map { it.id })
+
+        // Respuesta exitosa vacía también es autoritativa. Una excepción ocurre
+        // antes de este punto y, por tanto, nunca elimina la caché offline.
+        if (materiales.isEmpty()) materialDao.deleteAll() else materialDao.deleteNotIn(materiales.map { it.id })
+        if (cursos.isEmpty()) courseDao.deleteAllCourses() else courseDao.deleteCoursesNotIn(cursos.map { it.id })
     }
 
     suspend fun sincronizarMensajes() {
@@ -198,11 +211,59 @@ class SupabaseSyncRepository(
         messageDao.upsertAll(entidades)
     }
 
+    suspend fun sincronizarMensajesDirectos() {
+        val remotos = rest.directMessages()
+        directMessageDao.clearAll()
+        directMessageDao.upsertAll(remotos.map { dto ->
+            DirectMessageEntity(
+                id = dto.id,
+                studentId = dto.studentId,
+                teacherId = dto.teacherId,
+                senderId = dto.senderId,
+                studentName = dto.studentName,
+                content = dto.content,
+                timestamp = toLocalDateTime(dto.createdAt)
+            )
+        })
+    }
+
+    suspend fun enviarMensajeDirecto(studentId: String, teacherId: String, content: String) {
+        val userId = requireUserId()
+        val role = sessionStore.rol.first() ?: error("No se pudo validar el rol de la cuenta.")
+        require(
+            (role == RolUsuario.ESTUDIANTE && studentId == userId) ||
+                    (role == RolUsuario.DOCENTE && teacherId == userId)
+        ) { "La conversación no pertenece a la sesión actual." }
+        val name = if (role == RolUsuario.ESTUDIANTE) {
+            sessionStore.userName.first().orEmpty().ifBlank { "Estudiante" }
+        } else {
+            rest.profile("eq.$studentId").firstOrNull()?.fullName?.ifBlank { "Estudiante" }
+                ?: "Estudiante"
+        }
+        rest.createDirectMessage(
+            CreateDirectMessageRequest(
+                studentId = studentId,
+                teacherId = teacherId,
+                senderId = userId,
+                studentName = name,
+                content = content.trim()
+            )
+        )
+        sincronizarMensajesDirectos()
+    }
+
     suspend fun sincronizarProgreso() {
         if (sessionStore.rol.first() != RolUsuario.ESTUDIANTE) return
 
+        val userId = requireUserId()
+        // Reintenta el outbox antes de aplicar el estado remoto. Solo se borra
+        // cada pendiente después de que Supabase confirme el upsert.
+        materialDao.getPendingProgressIds(userId).forEach { materialId ->
+            rest.upsertProgress(UpsertProgressRequest(studentId = userId, materialId = materialId))
+            materialDao.clearPendingProgress(materialId, userId)
+        }
         val remoto = rest.progress()
-        materialDao.resetStudied()
+        materialDao.resetStudiedExceptPending(userId)
         remoto.forEach { materialDao.markStudied(it.materialId) }
     }
 
@@ -267,8 +328,9 @@ class SupabaseSyncRepository(
 
     suspend fun marcarEstudiado(materialId: String) {
         val userId = requireUserId()
+        materialDao.markStudiedPending(materialId, userId)
         rest.upsertProgress(UpsertProgressRequest(studentId = userId, materialId = materialId))
-        materialDao.markStudied(materialId)
+        materialDao.clearPendingProgress(materialId, userId)
     }
 
     /** Publica el material y, si viene un archivo, lo sube al bucket privado. */

@@ -48,6 +48,8 @@ import cl.duoc.esucar.ui.screens.teacher.editor.TeacherEditorScreen
 import cl.duoc.esucar.ui.screens.teacher.editor.TeacherEditorViewModel
 import cl.duoc.esucar.ui.screens.teacher.inbox.TeacherInboxScreen
 import cl.duoc.esucar.ui.screens.teacher.inbox.TeacherInboxViewModel
+import cl.duoc.esucar.ui.screens.chat.DirectChatScreen
+import cl.duoc.esucar.ui.screens.chat.DirectChatViewModel
 import cl.duoc.esucar.ui.screens.teacher.materials.TeacherMaterialsScreen
 import cl.duoc.esucar.ui.screens.teacher.materials.TeacherMaterialsViewModel
 import cl.duoc.esucar.ui.screens.teacher.reply.TeacherReplyScreen
@@ -276,6 +278,7 @@ private fun TeacherNavHost(
 
                     TeacherInboxScreen(
                         viewModel = viewModel,
+                        onDirectChat = { navController.navigate(Routes.DIRECT_CHAT) },
                         onMessageClick = { messageId ->
                             navController.navigate(
                                 Routes.teacherReply(messageId)
@@ -285,6 +288,23 @@ private fun TeacherNavHost(
                             navController.navigate(Routes.NOTIFICATIONS)
                         },
                         onLogout = onLogout
+                    )
+                }
+
+                composable(Routes.DIRECT_CHAT) {
+                    val chatViewModel: DirectChatViewModel = viewModel(
+                        factory = DirectChatViewModel.fabrica(
+                            sync = container.syncRepository,
+                            messageDao = container.directMessageDao,
+                            courseDao = container.courseDao,
+                            sessionStore = container.sessionStore,
+                            role = RolUsuario.DOCENTE
+                        )
+                    )
+                    DirectChatScreen(
+                        viewModel = chatViewModel,
+                        role = RolUsuario.DOCENTE,
+                        onBack = { navController.popBackStack() }
                     )
                 }
 

@@ -23,12 +23,16 @@ import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,6 +65,7 @@ fun NotificationsScreen(
     onBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var selectedNotification by remember { mutableStateOf<Notificacion?>(null) }
 
     Column(
         modifier = Modifier
@@ -124,13 +129,49 @@ fun NotificationsScreen(
                     uiState.notificaciones.forEach { notificacion ->
                         NotificationCard(
                             notificacion = notificacion,
-                            onClick = { viewModel.marcarLeida(notificacion.id) }
+                            onClick = {
+                                selectedNotification = notificacion
+                                if (!notificacion.leida) viewModel.marcarLeida(notificacion.id)
+                            }
                         )
                         Spacer(modifier = Modifier.height(10.dp))
                     }
                 }
             }
         }
+    }
+
+    selectedNotification?.let { notification ->
+        AlertDialog(
+            onDismissRequest = { selectedNotification = null },
+            icon = {
+                Icon(
+                    imageVector = when (notification.tipo) {
+                        TipoNotificacion.MATERIAL -> Icons.Outlined.Description
+                        TipoNotificacion.CONSULTA -> Icons.Outlined.ChatBubbleOutline
+                        TipoNotificacion.RESPUESTA -> Icons.AutoMirrored.Outlined.Reply
+                    },
+                    contentDescription = null
+                )
+            },
+            title = { Text(notification.titulo) },
+            text = {
+                Column {
+                    Text(notification.descripcion)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = formatShortDateTime(notification.fecha),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Slate500
+                    )
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { selectedNotification = null }) {
+                    Text("Entendido")
+                }
+            }
+        )
     }
 }
 

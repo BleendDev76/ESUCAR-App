@@ -169,6 +169,26 @@ data class CreateReplyRequest(
 )
 
 @Serializable
+data class DirectMessageDto(
+    val id: String,
+    @SerialName("student_id") val studentId: String,
+    @SerialName("teacher_id") val teacherId: String,
+    @SerialName("sender_id") val senderId: String,
+    @SerialName("student_name") val studentName: String,
+    val content: String,
+    @SerialName("created_at") val createdAt: String
+)
+
+@Serializable
+data class CreateDirectMessageRequest(
+    @SerialName("student_id") val studentId: String,
+    @SerialName("teacher_id") val teacherId: String,
+    @SerialName("sender_id") val senderId: String,
+    @SerialName("student_name") val studentName: String,
+    val content: String
+)
+
+@Serializable
 data class ProfileDto(
     val id: String,
     @SerialName("full_name") val fullName: String,
